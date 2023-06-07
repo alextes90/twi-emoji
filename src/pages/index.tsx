@@ -5,15 +5,13 @@ import { type RouterOutputs, api } from "~/utils/api";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Image from "next/image";
+import { LoadingPage } from "~/components/Loading";
 
 dayjs.extend(relativeTime);
 
 const Home: NextPage = () => {
-  const { data, isLoading } = api.posts.getAll.useQuery();
-
-  if (isLoading) return <div>Loading...</div>;
-
-  if (!data) return <div>Something went wrong</div>;
+  // Start fetching data asap and will put it in cache
+  api.posts.getAll.useQuery();
 
   return (
     <>
@@ -27,11 +25,7 @@ const Home: NextPage = () => {
           <div className="flex border-b border-slate-400 p-4">
             <AuthShowcase />
           </div>
-          <div className="flex flex-col">
-            {data?.map(({ post, author }) => {
-              return <PostView key={post.id} post={post} author={author} />;
-            })}
-          </div>
+          <Feed />
         </div>
       </main>
     </>
@@ -39,6 +33,22 @@ const Home: NextPage = () => {
 };
 
 export default Home;
+
+const Feed = () => {
+  const { data, isLoading } = api.posts.getAll.useQuery();
+
+  if (isLoading) return <LoadingPage />;
+
+  if (!data) return <div>Something went wrong</div>;
+
+  return (
+    <div className="flex flex-col">
+      {data?.map(({ post, author }) => {
+        return <PostView key={post.id} post={post} author={author} />;
+      })}
+    </div>
+  );
+};
 
 type PostWithUser = RouterOutputs["posts"]["getAll"][number];
 
@@ -72,7 +82,8 @@ const PostView = (props: PostWithUser) => {
 const AuthShowcase: React.FC = () => {
   const { data: sessionData } = useSession();
 
-  console.log(sessionData);
+  // return empty div if user isn't loaded
+  if (!sessionData) return <div />;
 
   return (
     <div className="flex w-full flex-col items-center justify-center gap-4">
