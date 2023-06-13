@@ -4,10 +4,40 @@ import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
+  type Context,
 } from "~/server/api/trpc";
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import type { Post } from "@prisma/client";
+
+const addUserDataToPosts = async (ctx: Context, posts: Post[]) => {
+  const users = await ctx.prisma.user.findMany({
+    where: {
+      id: {
+        in: posts.map((post) => post.authorId),
+      },
+    },
+    take: 100,
+  });
+
+  return posts.map((post) => {
+    const author = users.find((user) => user.id === post.authorId);
+
+    if (!author || !author.name)
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Author for post not found",
+      });
+    return {
+      post,
+      author: {
+        ...author,
+        name: author.name,
+      },
+    };
+  });
+};
 
 // Create a new ratelimiter, that allows 3 requests per 1 minute
 const ratelimit = new Ratelimit({
@@ -28,32 +58,22 @@ export const postsRouter = createTRPCRouter({
       take: 100,
       orderBy: [{ createdAt: "desc" }],
     });
-    const users = await ctx.prisma.user.findMany({
-      where: {
-        id: {
-          in: posts.map((post) => post.authorId),
-        },
-      },
-      take: 100,
-    });
 
-    return posts.map((post) => {
-      const author = users.find((user) => user.id === post.authorId);
-
-      if (!author || !author.name)
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Author for post not found",
-        });
-      return {
-        post,
-        author: {
-          ...author,
-          name: author.name,
-        },
-      };
-    });
+    return addUserDataToPosts(ctx, posts);
   }),
+
+  getPostsByUserId: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const posts = await ctx.prisma.post.findMany({
+        where: {
+          authorId: input.userId,
+        },
+        take: 100,
+        orderBy: [{ createdAt: "desc" }],
+      });
+      return addUserDataToPosts(ctx, posts);
+    }),
 
   create: protectedProcedure
     .input(

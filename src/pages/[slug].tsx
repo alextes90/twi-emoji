@@ -7,6 +7,8 @@ import superjson from "superjson";
 import { prisma } from "~/server/db";
 import { Layout } from "~/components/Layout";
 import Image from "next/image";
+import { LoadingPage } from "~/components/Loading";
+import { PostView } from "~/components/PostView";
 
 export const getStaticPaths: GetStaticPaths = () => {
   return { paths: [], fallback: "blocking" };
@@ -31,6 +33,26 @@ export const getStaticProps: GetStaticProps = async (context) => {
       username: slug,
     },
   };
+};
+
+const ProfileFeed = (props: { userId: string }) => {
+  const { data, isLoading } = api.posts.getPostsByUserId.useQuery({
+    userId: props.userId,
+  });
+
+  console.log(props.userId);
+
+  if (isLoading) return <LoadingPage />;
+
+  if (!data || data.length === 0) return <div>User has not posted yet</div>;
+
+  return (
+    <div className="flex flex-col">
+      {data?.map(({ post, author }) => {
+        return <PostView key={post.id} post={post} author={author} />;
+      })}
+    </div>
+  );
 };
 
 const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
@@ -58,6 +80,7 @@ const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
         <div className="h-[64px]" />
         <div className="p-4 text-2xl font-bold">{`@${data.name ?? ""}`}</div>
         <div className="w-full border-b border-slate-400" />
+        <ProfileFeed userId={data.id} />
       </Layout>
     </>
   );
