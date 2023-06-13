@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Image from "next/image";
 import { LoadingPage } from "~/components/Loading";
+import { useState } from "react";
 
 dayjs.extend(relativeTime);
 
@@ -73,17 +74,45 @@ const PostView = (props: PostWithUser) => {
             post.createdAt
           ).fromNow()}`}</span>
         </div>
-        <span>{post.content}</span>
+        <span className="text-2xl">{post.content}</span>
       </div>
     </div>
   );
 };
 
-const AuthShowcase: React.FC = () => {
+const PostWizard = () => {
   const { data: sessionData } = useSession();
+  const [inputVal, setInputVal] = useState("");
+  const ctx = api.useContext();
+  const { mutate, isLoading: isPosting } = api.posts.create.useMutation({
+    onSuccess: () => {
+      setInputVal("");
+      void ctx.posts.getAll.invalidate();
+    },
+  });
 
   // return empty div if user isn't loaded
-  if (!sessionData) return <div />;
+  if (!sessionData) {
+    return null;
+  }
+
+  return (
+    <>
+      <input
+        placeholder="Type some emojis!"
+        className="grow bg-transparent outline-none focus:border-b-2 focus:border-slate-400"
+        value={inputVal}
+        type="text"
+        onChange={(e) => setInputVal(e.target.value)}
+        disabled={isPosting}
+      />
+      <button onClick={() => mutate({ content: inputVal })}>Post</button>
+    </>
+  );
+};
+
+const AuthShowcase: React.FC = () => {
+  const { data: sessionData } = useSession();
 
   return (
     <div className="flex w-full flex-col items-center justify-center gap-4">
@@ -92,13 +121,18 @@ const AuthShowcase: React.FC = () => {
           {sessionData && <span>Logged in as {sessionData.user?.name}</span>}
         </p>
         <div className="flex gap-3">
-          <Image
-            className="rounded-full"
-            src={sessionData?.user?.image || ""}
-            alt="Profile Image"
-            height={56}
-            width={56}
-          />
+          {sessionData ? (
+            <Image
+              className="rounded-full"
+              src={sessionData?.user?.image || ""}
+              alt="Profile Image"
+              height={56}
+              width={56}
+            />
+          ) : (
+            ""
+          )}
+
           <button
             className="rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20"
             onClick={sessionData ? () => void signOut() : () => void signIn()}
@@ -108,10 +142,7 @@ const AuthShowcase: React.FC = () => {
         </div>
       </div>
       <div className="flex w-full">
-        <input
-          placeholder="Type some emojis!"
-          className="grow bg-transparent outline-none focus:border-b-2 focus:border-slate-400"
-        />
+        <PostWizard />
       </div>
     </div>
   );
