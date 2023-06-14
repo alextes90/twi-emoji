@@ -1,25 +1,18 @@
 import { type GetStaticPaths, type GetStaticProps, type NextPage } from "next";
 import Head from "next/head";
-import { appRouter } from "~/server/api/root";
 import { api } from "~/utils/api";
-import { createServerSideHelpers } from "@trpc/react-query/server";
-import superjson from "superjson";
-import { prisma } from "~/server/db";
 import { Layout } from "~/components/Layout";
 import Image from "next/image";
 import { LoadingPage } from "~/components/Loading";
 import { PostView } from "~/components/PostView";
+import { generateSSGHelper } from "~/server/helpers/ssgHelper";
 
 export const getStaticPaths: GetStaticPaths = () => {
   return { paths: [], fallback: "blocking" };
 };
 
 export const getStaticProps: GetStaticProps = async (context) => {
-  const ssg = createServerSideHelpers({
-    router: appRouter,
-    ctx: { prisma, session: null },
-    transformer: superjson, // optional - adds superjson serialization
-  });
+  const ssg = generateSSGHelper();
 
   const slug = context.params?.slug;
 
@@ -39,8 +32,6 @@ const ProfileFeed = (props: { userId: string }) => {
   const { data, isLoading } = api.posts.getPostsByUserId.useQuery({
     userId: props.userId,
   });
-
-  console.log(props.userId);
 
   if (isLoading) return <LoadingPage />;
 
