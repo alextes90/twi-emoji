@@ -61,7 +61,7 @@ const PostWizard = () => {
 
   // return empty div if user isn't loaded
   if (!sessionData) {
-    return null;
+    return <div />;
   }
 
   return (

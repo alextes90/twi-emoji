@@ -13,7 +13,6 @@ export const getStaticPaths: GetStaticPaths = () => {
 
 export const getStaticProps: GetStaticProps = async (context) => {
   const ssg = generateSSGHelper();
-
   const slug = context.params?.slug;
 
   if (typeof slug !== "string") throw new Error("no slug");
