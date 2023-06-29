@@ -16,16 +16,16 @@ export const PostView = (props: PostWithUser) => {
       key={post.id}
     >
       <Image
-        src={author.image || ""}
-        alt={`${author?.name}'s profile picture`}
+        src={author.imageUrl || ""}
+        alt={`${author?.username}'s profile picture`}
         className="rounded-full"
         height={56}
         width={56}
       />
       <div className="flex flex-col">
         <div className="flex gap-1 font-bold text-slate-400">
-          <Link href={`/${author.name}`}>
-            <span>{`@${author.name}`}</span>
+          <Link href={`/user/${author.username}`}>
+            <span>{`@${author.username}`}</span>
           </Link>
           <Link href={`/post/${post.id}`}>
             <span className="font-thin">{` · ${dayjs(

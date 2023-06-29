@@ -12,7 +12,7 @@ export const getStaticPaths: GetStaticPaths = () => {
 export const getStaticProps: GetStaticProps = async (context) => {
   const ssg = generateSSGHelper();
 
-  const postId = context.params?.id;
+  const postId = context.params?.id as string;
 
   if (typeof postId !== "string") throw new Error("no slug");
 
@@ -34,7 +34,7 @@ const SinglePostPage: NextPage<{ postId: string }> = ({ postId }) => {
   return (
     <>
       <Head>
-        <title>{`${data.post.content} - @${data.author.name || ""}`}</title>
+        <title>{`${data.post.content} - @${data.author.username || ""}`}</title>
       </Head>
       <Layout>
         <PostView post={data.post} author={data.author} />

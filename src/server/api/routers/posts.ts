@@ -1,39 +1,37 @@
+import { clerkClient } from "@clerk/nextjs/server";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
-  type Context,
 } from "~/server/api/trpc";
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import type { Post } from "@prisma/client";
+import { filterUserForClient } from "~/server/helpers/filterUserForClient";
 
-const addUserDataToPosts = async (ctx: Context, posts: Post[]) => {
-  const users = await ctx.prisma.user.findMany({
-    where: {
-      id: {
-        in: posts.map((post) => post.authorId),
-      },
-    },
-    take: 100,
-  });
+const addUserDataToPosts = async (posts: Post[]) => {
+  const userId = posts.map((post) => post.authorId);
+  const users = (
+    await clerkClient.users.getUserList({ userId, limit: 100 })
+  ).map(filterUserForClient);
 
   return posts.map((post) => {
     const author = users.find((user) => user.id === post.authorId);
 
-    if (!author || !author.name)
+    if (!author)
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
-        message: "Author for post not found",
+        message: `Author for post not found. POST ID: ${post.id}, USER ID: ${post.authorId}`,
       });
+
     return {
       post,
       author: {
         ...author,
-        name: author.name,
+        username: author.username ?? "(username not found)",
       },
     };
   });
@@ -59,7 +57,7 @@ export const postsRouter = createTRPCRouter({
       orderBy: [{ createdAt: "desc" }],
     });
 
-    return addUserDataToPosts(ctx, posts);
+    return addUserDataToPosts(posts);
   }),
 
   getPostById: publicProcedure
@@ -71,26 +69,14 @@ export const postsRouter = createTRPCRouter({
         },
       });
 
-      const author = await ctx.prisma.user.findUnique({
-        where: {
-          id: post?.authorId,
-        },
-      });
-
-      if (!author || !post || !author.name) {
+      if (!post) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "User or post not found",
+          message: "Post not found",
         });
       }
 
-      return {
-        post,
-        author: {
-          ...author,
-          name: author.name,
-        },
-      };
+      return (await addUserDataToPosts([post]))[0];
     }),
 
   getPostsByUserId: publicProcedure
@@ -103,7 +89,7 @@ export const postsRouter = createTRPCRouter({
         take: 100,
         orderBy: [{ createdAt: "desc" }],
       });
-      return addUserDataToPosts(ctx, posts);
+      return addUserDataToPosts(posts);
     }),
 
   create: protectedProcedure
@@ -113,7 +99,7 @@ export const postsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const authorId = ctx.session.user.id;
+      const authorId = ctx.userId;
       const { success } = await ratelimit.limit(authorId);
 
       if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS" });

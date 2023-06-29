@@ -1,5 +1,4 @@
 import { type NextPage } from "next";
-import { signIn, signOut, useSession } from "next-auth/react";
 import { api } from "~/utils/api";
 import Image from "next/image";
 import { LoadingPage, LoadingSpinner } from "~/components/Loading";
@@ -7,6 +6,7 @@ import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { Layout } from "~/components/Layout";
 import { PostView } from "~/components/PostView";
+import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 
 const Home: NextPage = () => {
   // Start fetching data asap and will put it in cache
@@ -41,7 +41,7 @@ const Feed = () => {
 };
 
 const PostWizard = () => {
-  const { data: sessionData } = useSession();
+  const { isLoaded, isSignedIn} = useUser();
   const [inputVal, setInputVal] = useState("");
   const ctx = api.useContext();
   const { mutate, isLoading: isPosting } = api.posts.create.useMutation({
@@ -59,9 +59,9 @@ const PostWizard = () => {
     },
   });
 
-  // return empty div if user isn't loaded
-  if (!sessionData) {
-    return <div />;
+
+  if (!isLoaded || !isSignedIn) {
+    return null;
   }
 
   return (
@@ -95,19 +95,19 @@ const PostWizard = () => {
 };
 
 const AuthShowcase: React.FC = () => {
-  const { data: sessionData } = useSession();
+  const { isSignedIn, user } = useUser();
 
   return (
     <div className="flex w-full flex-col items-center justify-center gap-4">
       <div className="flex w-full justify-between">
         <p className="text-center text-2xl text-white">
-          {sessionData && <span>Logged in as {sessionData.user?.name}</span>}
+          {user && <span>Logged in as {user?.firstName}</span>}
         </p>
         <div className="flex gap-3">
-          {sessionData ? (
+          {user ? (
             <Image
               className="rounded-full"
-              src={sessionData?.user?.image || ""}
+              src={user?.imageUrl || ""}
               alt="Profile Image"
               height={56}
               width={56}
@@ -115,13 +115,10 @@ const AuthShowcase: React.FC = () => {
           ) : (
             ""
           )}
-
-          <button
-            className="rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20"
-            onClick={sessionData ? () => void signOut() : () => void signIn()}
-          >
-            {sessionData ? "Sign out" : "Sign in"}
-          </button>
+          <div className="rounded-full bg-white/10 px-10 py-3 font-semibold text-white no-underline transition hover:bg-white/20">
+            {!isSignedIn && <SignInButton mode="modal" />}
+            {isSignedIn && <SignOutButton />}
+          </div>
         </div>
       </div>
       <div className="flex w-full">
