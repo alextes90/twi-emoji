@@ -10,14 +10,21 @@ import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 
 const Home: NextPage = () => {
   // Start fetching data asap and will put it in cache
-  api.posts.getAll.useQuery();
+  // api.posts.getAll.useQuery();
+  const { isLoaded, isSignedIn } = useUser();
 
   return (
     <Layout>
       <div className="flex border-b border-slate-400 p-4">
         <AuthShowcase />
       </div>
-      <Feed />
+      {!isLoaded || !isSignedIn ? (
+        <div className="flex justify-center pt-8 text-lg">
+          Please log in to see posts
+        </div>
+      ) : (
+        <Feed />
+      )}
     </Layout>
   );
 };
@@ -41,7 +48,7 @@ const Feed = () => {
 };
 
 const PostWizard = () => {
-  const { isLoaded, isSignedIn} = useUser();
+  const { isLoaded, isSignedIn } = useUser();
   const [inputVal, setInputVal] = useState("");
   const ctx = api.useContext();
   const { mutate, isLoading: isPosting } = api.posts.create.useMutation({
@@ -58,7 +65,6 @@ const PostWizard = () => {
       }
     },
   });
-
 
   if (!isLoaded || !isSignedIn) {
     return null;
